@@ -1,0 +1,540 @@
+<html>
+<head>
+	<title>Search Spokane</title>
+
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+
+  <link rel="icon" type="image/png" href="favicon.ico" />
+
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqOmuo3IvBpoAcfmIBRTiV49-JYBnvtsY&sensor=false&libraries=visualization"></script>
+  <script type="text/javascript" charset="utf-8" src="js/jquery-1.9.0.min.js"></script>
+  <script type="text/javascript" charset="utf-8" src="js/jquery-ui-1.10.0.custom.min.js"></script>
+  <script type="text/javascript" charset="utf-8" src="db/WeighedCrime.js"></script>
+  <script type="text/javascript" charset="utf-8" src="db/WeighedBooze.js"></script>
+  <script type="text/javascript" charset="utf-8" src="db/RecycleData.js"></script>
+  <script type="text/javascript" charset="utf-8" src="db/TrafficData.js"></script>
+
+  <link href='css/smoothness/jquery-ui-1.10.0.custom.min.css' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" type="text/css" href="css/style.css">
+  <link href='http://fonts.googleapis.com/css?family=Open+Sans:300,400' rel='stylesheet' type='text/css'>
+
+  <script type="text/javascript">
+
+      // MAP CONTAINER
+      var mapContainer;
+      
+      // HEAT MAPS
+      var heatmapRecycle, heatmapRecyclePlastic, heatmapRecycleCardboard, heatmapRecycleNewspaper,
+            heatmapRecycleAluminum, heatmapRecycleTin, heatmapRecycleGlass, heatmapRecycleBatteries;
+      var heatmapCrimes;
+//      var heatmapLicenseLiquor;
+      var heatmapTraffic, heatmapTrafficPeak, heatmapTrafficDaily, heatmapTrafficNB, heatmapTrafficSB, heatmapTrafficEB, heatmapTrafficWB;
+      
+      // HEAT MAP NAMES
+      var HEATMAPNAME_RecycleTotals = 'Recycle Collection';
+      var HEATMAPNAME_RecycleBatteries = "Batteries";
+      var HEATMAPNAME_RecycleCardboard = "Cardboard";
+      var HEATMAPNAME_RecycleGlass = "Glass";
+      var HEATMAPNAME_RecyclePlastic = "Plastic";
+      var HEATMAPNAME_RecycleNewspaper = "Newspaper";
+      var HEATMAPNAME_RecycleTin = "Tin";
+      var HEATMAPNAME_RecycleAluminum = "Aluminum";
+      
+      var HEATMAPNAME_CrimeStats = 'Crime Stats';
+
+      var HEATMAPNAME_Traffic = "Traffic";
+      var HEATMAPNAME_TrafficPeak = "Peak";
+      var HEATMAPNAME_TrafficDaily = "Daily";
+      var HEATMAPNAME_TrafficNB = "North Bound";
+      var HEATMAPNAME_TrafficSB = "South Bound";
+      var HEATMAPNAME_TrafficEB = "East Bound";
+      var HEATMAPNAME_TrafficWB = "West Bound";
+      
+      $(function() {
+
+          // set up the sliders
+          $(".radius").slider({
+              min: 10,
+              max: 80,
+              step: 5,
+              value: 55
+          });
+
+          $(".opacity").slider({
+              min: 0.1,
+              max: 1,
+              step: 0.1,
+              value: 0.7
+          });
+
+          // prepare the buttons
+          $("#license-heat").button();
+          $("#crime-heat").button();
+
+          // it's map time
+          var spokaneCenter = new google.maps.LatLng(47.657988, -117.46582);
+          var spokaneValley = new google.maps.LatLng(47.657988, -117.34082);
+
+          var gradient_blue = [
+                'rgba(0, 255, 255, 0)',
+                'rgba(0,0,136,1)',
+                'rgba(34,35,157,1)',
+                'rgba(69,72,179,1)',
+                'rgba(98,103,197,1)',
+                'rgba(126,132,215,1)',
+                'rgba(158,165,235,1)',
+                'rgba(191,200,255,1)',
+            ];
+
+          var gradient_orange = [
+                'rgba(0, 255, 255, 0)',
+                'rgba(242,129,0,1)',
+                'rgba(245,148,33,1)',
+                'rgba(247,166,66,1)',
+                'rgba(249,186,102,1)',
+                'rgba(251,205,136,1)',
+                'rgba(253,225,171,1)',
+                'rgba(255,242,201,1)',
+            ];
+
+          var mapOptions = {
+              center: spokaneValley,
+              zoom: 11,
+              mapTypeId: google.maps.MapTypeId.ROADMAP,
+              disableDefaultUI: true
+          };
+
+          mapContainer = new google.maps.Map(document.getElementById("mappy"), mapOptions);
+          heatmapLicenseLiquor = new google.maps.visualization.HeatmapLayer({ data: BoozeMap, dissipating: true });
+          heatmapCrimes = new google.maps.visualization.HeatmapLayer({ data: CrimeMap, dissipating: true });
+
+          heatmapCrimes.setOptions({ gradient: gradient_orange, radius: 55, opacity: 0.7 });
+          heatmapLicenseLiquor.setOptions({ gradient: gradient_blue, radius: 55, opacity: 0.7 });
+
+          heatmapRecycle = new google.maps.visualization.HeatmapLayer({ data: RecycleTotalsMap, dissipating: true });
+          heatmapRecyclePlastic = new google.maps.visualization.HeatmapLayer({ data: RecyclePlasticMap, dissipating: true });
+          heatmapRecycleCardboard = new google.maps.visualization.HeatmapLayer({ data: RecycleCardboardMap, dissipating: true });
+          heatmapRecycleNewspaper = new google.maps.visualization.HeatmapLayer({ data: RecycleNewspaperMap, dissipating: true });
+          heatmapRecycleAluminum = new google.maps.visualization.HeatmapLayer({ data: RecycleAluminumMap, dissipating: true });
+          heatmapRecycleTin = new google.maps.visualization.HeatmapLayer({ data: RecycleTinMap, dissipating: true });
+          heatmapRecycleGlass = new google.maps.visualization.HeatmapLayer({ data: RecycleGlassMap, dissipating: true });
+          heatmapRecycleBatteries = new google.maps.visualization.HeatmapLayer({ data: RecycleBatteryMap, dissipating: true });
+
+          heatmapTraffic = new google.maps.visualization.HeatmapLayer({ data: TrafficMap, dissipating: true });
+          heatmapTrafficPeak = new google.maps.visualization.HeatmapLayer({ data: TrafficMapPeak, dissipating: true });
+          heatmapTrafficDaily = new google.maps.visualization.HeatmapLayer({ data: TrafficMapDaily, dissipating: true });
+          heatmapTrafficNB = new google.maps.visualization.HeatmapLayer({ data: TrafficMapNB, dissipating: true });
+          heatmapTrafficSB = new google.maps.visualization.HeatmapLayer({ data: TrafficMapSB, dissipating: true });
+          heatmapTrafficEB = new google.maps.visualization.HeatmapLayer({ data: TrafficMapEB, dissipating: true });
+          heatmapTrafficWB = new google.maps.visualization.HeatmapLayer({ data: TrafficMapWB, dissipating: true });
+
+          // this toggles a heatmap
+          $("#lp").click(function() {
+              heatmapLicense.setMap(heatmapLicense.getMap() ? null : mapContainer);
+          });
+          $("#cp").click(function() {
+              heatmapCrimes.setMap(heatmapCrimes.getMap() ? null : mapContainer);
+          });
+
+          // function to be called when the sliders change values
+          function sliding() {
+              var val = $(this).slider("value");
+
+              switch ($(this).attr("id")) {
+                  case 'license-opacity':
+                      heatmapLicense.setOptions({ opacity: val });
+                      break;
+
+                  case 'license-radius':
+                      heatmapLicense.setOptions({ radius: val });
+                      break;
+
+                  case 'crime-opacity':
+                      heatmapCrimes.setOptions({ opacity: val });
+                      break;
+
+                  case 'crime-radius':
+                      heatmapCrimes.setOptions({ radius: val });
+                      break;
+              }
+          }
+
+          // slider and logo events
+          $(".slider").slider({ slide: sliding, change: sliding });
+          $("#logo").hover(function() { $(this).toggleClass('hidden'); });
+      });
+      </script>
+
+<link rel="stylesheet" type="text/css" href="tree/css/demo.css">
+<link rel="stylesheet" type="text/css" href="tree/css/base.css">
+<link rel="stylesheet" type="text/css" href="tree/css/tree.css">
+
+<script type="text/javascript" src="tree/js/base.js"></script>
+<script type="text/javascript" src="tree/js/popupmenu.js"></script>
+<script type="text/javascript" src="tree/js/treenode.js"></script>
+<script type="text/javascript" src="tree/js/tree.js"></script>
+
+<script type="text/javascript">
+    var prefun = test_addNode;
+
+    function initTree(showline) {
+        var cont = zk.get("cont");
+        cont.innerHTML = '';
+        zk.Tree.S = 'images/b.gif';
+        zk.console = zk.get("logs");
+        window.tree = new zk.Tree({ showline: showline, to: cont });
+        window.gNode = new zk.TreeNode({ tree: tree, text: "Topics", key: "demo", iconCls: 'demoicon' });
+        zk.setStyle(gNode.label, "color:red;font-size:18px;font-weight:bold;");
+        tree.addNode(tree.root, gNode);
+        zk.oe(tree, 'select', function() {
+            zk.log('tree.selectedNode:' + tree.selectedNode.caption);
+            treeItemSelected(tree.selectedNode);
+        });
+
+        function treeItemSelected(selectedNode) {
+            var show = false;
+            if (selectedNode.checkBox.checked) {
+                selectedNode.checkBox.checked = false;
+            } else {
+                selectedNode.checkBox.checked = true;
+                show = true;
+            }
+            switch (selectedNode.caption) {
+
+                case HEATMAPNAME_RecycleAluminum:
+                    heatmapRecycleAluminum.setMap(heatmapRecycleAluminum.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_RecycleCardboard:
+                    heatmapRecycleCardboard.setMap(heatmapRecycleCardboard.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_RecycleGlass:
+                    heatmapRecycleGlass.setMap(heatmapRecycleGlass.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_RecycleNewspaper:
+                    heatmapRecycleNewspaper.setMap(heatmapRecycleNewspaper.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_RecyclePlastic:
+                    heatmapRecyclePlastic.setMap(heatmapRecyclePlastic.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_RecycleTin:
+                    heatmapRecycleTin.setMap(heatmapRecycleTin.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_RecycleTotals:
+                    heatmapRecycle.setMap(heatmapRecycle.getMap() ? null : mapContainer);
+                    break;
+
+                case HEATMAPNAME_Traffic:
+                    heatmapTraffic.setMap(heatmapTraffic.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_TrafficPeak:
+                    heatmapTrafficPeak.setMap(heatmapTrafficPeak.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_TrafficDaily:
+                    heatmapTrafficDaily.setMap(heatmapTrafficDaily.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_TrafficNB:
+                    heatmapTrafficNB.setMap(heatmapTrafficNB.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_TrafficSB:
+                    heatmapTrafficSB.setMap(heatmapTrafficSB.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_TrafficEB:
+                    heatmapTrafficEB.setMap(heatmapTrafficEB.getMap() ? null : mapContainer);
+                    break;
+                case HEATMAPNAME_TrafficWB:
+                    heatmapTrafficWB.setMap(heatmapTrafficWB.getMap() ? null : mapContainer);
+                    break;
+
+            }
+
+         //   alert('selected ' + selectedNode.caption);
+        }
+/*        
+        tree.oncontextmenu = function(e, node) {
+            if (!node.contmenu) {
+                node.contmenu = new zk.PopupMenu();
+            }
+            node.contmenu.removeitemAll();
+            var item = new zk.MenuItem({ text: 'menu for ' + node.caption });
+            node.contmenu.additem(item);
+
+            node.contmenu.show({ event: e });
+
+            return false;
+        };
+*/
+    }
+
+    zk.ok(initTree);
+    
+    function buildTreeMenu() {
+        prefun = test_multi;
+        gNode.removeChildren();
+
+        var node1 = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecycleTotals, type: zk.Tree.CHECKBOX });
+     //   node1.checkBox.checked = true;
+        tree.addNode(gNode, node1);
+
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecycleCardboard, type: zk.Tree.CHECKBOX });
+        tree.addNode(node1, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecycleGlass, type: zk.Tree.CHECKBOX });
+        tree.addNode(node1, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecyclePlastic, type: zk.Tree.CHECKBOX });
+        tree.addNode(node1, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecycleBatteries, type: zk.Tree.CHECKBOX });
+        tree.addNode(node1, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecycleNewspaper, type: zk.Tree.CHECKBOX });
+        tree.addNode(node1, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecycleTin, type: zk.Tree.CHECKBOX });
+        tree.addNode(node1, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_RecycleAluminum, type: zk.Tree.CHECKBOX });
+        tree.addNode(node1, node);
+        //        for (var i = 0; i < 5; i++) {
+//            var node = new zk.TreeNode({ tree: tree, text: "checkbox" + i, type: zk.Tree.CHECKBOX });
+//            tree.addNode(node1, node);
+//        }
+        zk.oe(node1, 'click', function() { node1.setChecked(node1.checked, true); });
+
+        var node2 = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_Traffic, type: zk.Tree.CHECKBOX });
+        tree.addNode(gNode, node2);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_TrafficPeak, type: zk.Tree.CHECKBOX });
+        tree.addNode(node2, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_TrafficDaily, type: zk.Tree.CHECKBOX });
+        tree.addNode(node2, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_TrafficNB, type: zk.Tree.CHECKBOX });
+        tree.addNode(node2, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_TrafficSB, type: zk.Tree.CHECKBOX });
+        tree.addNode(node2, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_TrafficEB, type: zk.Tree.CHECKBOX });
+        tree.addNode(node2, node);
+        var node = new zk.TreeNode({ tree: tree, text: HEATMAPNAME_TrafficWB, type: zk.Tree.CHECKBOX });
+        tree.addNode(node2, node);
+
+        zk.oe(node2, 'click', function() { node2.setChecked(node2.checked, true); });
+    }
+    
+
+    //style
+    function test_style(showline) {
+        initTree(showline);
+        prefun();
+    }
+
+    //addNode
+    function test_addNode() {
+        prefun = test_addNode;
+        gNode.removeChildren();
+        var pe = new Date();
+        for (var i = 0; i < 10; i++) {
+            var node = new zk.TreeNode({ tree: tree, text: i + '' });
+            tree.addNode(gNode, node);
+        }
+        var pd = new Date();
+        //alert("cost " + (pd-pe) + " ms");				
+    }
+
+    //event		
+    //onclick
+    function test_onclick(node) {
+        alert(node.caption);
+    }
+
+    //oncontextmenu
+    function test_oncontextmenu(node) {
+        //it is just a callback,the contextmenu need you to handle it by youself
+        if (!node.contmenu) {
+            node.contmenu = new PopupMenu();
+        }
+        node.contmenu.removeitemAll();
+        var item = new MenuItem(node.caption);
+        node.contmenu.additem(item);
+
+        node.contmenu.show();
+    }
+
+    //find by key
+    function test_findByKey() {
+        //			find the node by the key of the node "demo"
+        tree.nodes["demo"].select();
+    }
+
+    //lazy-loading
+    function test_lazyloading() {
+        prefun = test_lazyloading;
+        gNode.removeChildren();
+        var ln = new zk.TreeNode({ tree: tree, text: "lazyloading", expandStyle: "always" });
+
+        zk.oe(ln, 'collapse', function() { ln.removeChildren(); });
+        zk.oe(ln, 'expand', function() {
+            ln.setCaption("loading.....");
+            var inv = window.setInterval(function() {
+                tree.addNode(ln, new zk.TreeNode({ tree: tree, text: "lazy-1" }));
+                tree.addNode(ln, new zk.TreeNode({ tree: tree, text: "lazy-2" }));
+                ln.setCaption("done");
+                window.clearInterval(inv);
+            }, 2000);
+        });
+
+        tree.addNode(gNode, ln);
+    }
+
+    //checkbox
+    function test_checkbox() {
+        prefun = test_checkbox;
+        gNode.removeChildren();
+
+        for (var i = 0; i < 5; i++) {
+            var node = new zk.TreeNode({ tree: tree, text: "checkbox" + i, type: zk.Tree.CHECKBOX });
+            tree.addNode(gNode, node);
+            //note:this method can't be called before this node is added to the tree
+            node.setChecked(true);
+            zk.oe(node, 'click', function(e, data) {
+                var node = e.src;
+                zk.log('node ' + node.caption + ' is ' + (!node.checked ? 'unchecked' : 'checked'));
+                var count = gNode.getChildrenCount();
+                for (var i = 0; i < count; i++) {
+                    cnode = gNode.children[i];
+                    if (cnode.checked) {
+                        zk.log('gNode has ' + cnode.caption + ' checked.');
+                    }
+                }
+            });
+        }
+    }
+
+    //radiobox
+    function test_radiobox() {
+        prefun = test_radiobox;
+        gNode.removeChildren();
+
+        for (var i = 0; i < 5; i++) {
+            var node = new zk.TreeNode({ tree: tree, text: "radiobox" + i, type: zk.Tree.RADIOBOX });
+            tree.addNode(gNode, node);
+            //note:this method can't be called before this node is added to the tree			
+            node.setRadioCheck();
+        }
+
+        zk.oe(gNode, 'rdocheckchanged', function(e, data) {
+            zk.log('radio select changed from ' + data.preNode.caption + ' to ' + data.curNode.caption);
+        });
+    }
+
+    function test_multi() {
+        prefun = test_multi;
+        gNode.removeChildren();
+
+        var node1 = new zk.TreeNode({ tree: tree, text: '1', type: zk.Tree.CHECKBOX });
+        tree.addNode(gNode, node1);
+
+        for (var i = 0; i < 5; i++) {
+            var node = new zk.TreeNode({ tree: tree, text: "checkbox" + i, type: zk.Tree.CHECKBOX });
+            tree.addNode(node1, node);
+        }
+        zk.oe(node1, 'click', function() { node1.setChecked(node1.checked, true); });
+
+        var node2 = new zk.TreeNode({ tree: tree, text: '2', type: zk.Tree.RADIOBOX });
+        node2.rdoBox.name = '2';
+        tree.addNode(gNode, node2);
+        for (var i = 0; i < 5; i++) {
+            var node = new zk.TreeNode({ tree: tree, text: "radiobox" + i, type: zk.Tree.RADIOBOX });
+            tree.addNode(node2, node);
+            node.rdoBox.name = '21';
+        }
+
+        var node3 = new zk.TreeNode({ tree: tree, text: "3", type: zk.Tree.CHECKBOX });
+        tree.addNode(gNode, node3);
+        for (var i = 0; i < 5; i++) {
+            var node = new zk.TreeNode({ tree: tree, text: "radiobox" + i, type: zk.Tree.RADIOBOX });
+            tree.addNode(node3, node);
+            node.rdoBox.name = '31';
+        }
+
+        var node4 = new zk.TreeNode({ tree: tree, text: "4", type: zk.Tree.RADIOBOX });
+        //the radiobox with the same level will in the same group 	
+        node4.rdoBox.name = '4';
+        tree.addNode(gNode, node4);
+        for (var i = 0; i < 5; i++) {
+            var node = new zk.TreeNode({ tree: tree, text: "radiobox" + i, type: zk.Tree.CHECKBOX });
+            tree.addNode(node4, node);
+        }
+    }
+
+    //performance
+    function test_performance(type) {
+        if (window.win) {
+            window.win.close();
+        }
+        if (type) {
+            window.win = window.open("pt.html?t=1&n=" + zk.get("pn").value);
+        } else {
+            window.win = window.open("pt.html?t=0&n=" + zk.get("pn").value);
+        }
+    }				
+
+</script>
+<script>
+    function onPageBodyLoad() {
+        setTimeout('buildTreeMenu()', 1000);
+        getRecycleDataFromService();
+        getTrafficDataFromService();
+    }
+</script>
+</head>
+
+<body onload="onPageBodyLoad()">
+  <div id="side-bar">
+    
+    <h2>City Search</h2>
+<table>
+    <tr>
+        <td>
+    <span id="cont">
+        <div>
+            <span style="margin: 0px; padding: 0px; white-space: nowrap; display: block;position:relative;left:-16px;">
+                <span style="margin:0px;cursor:default;text-align:left;color:black;font-size:9pt;">
+                    <img align="absmiddle" src="images/b.gif" class="undefined">
+                    <img align="absmiddle" src="images/b.gif" class="demoicon" tabindex="1" style="margin-left: 0px;">
+	                <span style="color:red;font-size:18px;font-weight:bold;" tabindex="1">Topics</span>
+                </span>
+            </span>
+        </div>
+    </span>
+        </td>
+    </tr>
+</table>
+    
+    	<textarea id="logs" rows="20" cols="30" style="display:none;"></textarea>
+<!--
+      <h3 id="license-color">licenses</h3>
+      <input type="checkbox" id="license-heat" />
+      <label for="license-heat" class="heat-label" id="lp">heatmap</label>
+
+      <label class="slider-label">
+        <div class="slider opacity" id="license-opacity"></div>
+        opacity
+      </label>
+      <label class="slider-label">
+        <div class="slider radius" id="license-radius"></div>
+        radius
+      </label>
+    
+      <h3 id="crime-color">crimes</h3>
+      <input type="checkbox" id="crime-heat" />
+      <label for="crime-heat" class="heat-label" id="cp">heatmap</label>
+
+      <label class="slider-label">
+        <div class="slider opacity" id="crime-opacity"></div>
+        opacity
+      </label>
+      <label class="slider-label">
+        <div class="slider radius" id="crime-radius"></div>
+        radius
+      </label>
+      -->
+  </div>
+  <div id="mappy"></div>
+
+  <div id="logo"></div>
+
+</body>
+</html>
